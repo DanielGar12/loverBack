@@ -29,11 +29,52 @@ app.post('/users', async (req, res) => {
 
     try{
 
+        const hashPassword = await bcrypt.hash(password, 10);
+        const newUser = new User ({ firstName, lastName, username, password: hashPassword});
+        await newUser.save();
+        res.status(201).send({ message: 'User has been successfully created', user: newUser});
+
+
     }
     catch(error){
-        
+        console.error('Registration error:', error);
+        if(error.code === 11000){
+            return res.status(400).send({error: 'Username already exists'});
+        }
+        return res.status(500).send({error: 'Failed to create the user'});
+
     }
 })
+
+app.post('/login', async (req, res) =>{
+    const {username, password} = req.body
+
+    try{
+        const user = await User.findOne({username});
+        if(!user){
+            return res.status(400).send({error: 'User was not found'});
+        }
+        const isMatch = await bcrypt.compare(password, user.password);
+        if(!isMatch){
+            return res.status(400).send({error: 'Invalid password'});
+        }
+        res.status(200).send({message: 'User login successful', user});
+    }
+    catch(error){
+        console.error('Login error:', error)
+        res.status(500).send({error: 'Failed to login'});
+    }
+});
+
+app.get('/users', async (req, res) => {
+    try{
+        const users = await User.find()
+        res.status(200).send(users)
+    }
+    catch(error){
+        res.status(500).send({error: 'failed to fetch user: '})
+    }
+});
 
 
 const PORT = process.env.PORT || 3000;
