@@ -156,12 +156,11 @@ app.post('/invite/respond', async (req, res) => {
             return res.status(404).send({ error: 'Invite not found' });
         }
 
-        // Update invite status to accepted or rejected
+       
         invite.status = status;
         await invite.save();
 
         if (status === 'accepted') {
-            // Optionally, create a Couple entry when invite is accepted
             const couple = new Couple({ user1: invite.sender, user2: invite.receiver });
             await couple.save();
             res.status(200).send({ message: 'Invite accepted, users connected', couple });
@@ -173,6 +172,7 @@ app.post('/invite/respond', async (req, res) => {
         res.status(500).send({ error: 'Failed to respond to invite' });
     }
 });
+
 
 
 
@@ -214,26 +214,26 @@ app.get('/couple/:username', async (req, res) => {
 
 app.get('/invitations/:username', async (req, res) => {
     const { username } = req.params;
+    const { status } = req.query; // Get the status from the query params
 
     try {
-        // Find the user by username
-        const receiver = await User.findOne({ username });
-
-        if (!receiver) {
+        const user = await User.findOne({ username });
+        if (!user) {
             return res.status(404).send({ error: 'User not found' });
         }
 
-        // Fetch invitations where the user is the receiver
-        const invitations = await Invite.find({ receiver: receiver._id })
-            .populate('sender', 'username firstName lastName') // Populate sender details
-            .exec();
+        const invitations = await Invite.find({
+            receiver: user._id,
+            status: status || 'pending' // Default to pending if no status is provided
+        }).populate('sender', 'username');
 
         res.status(200).send({ invitations });
     } catch (error) {
-        console.error('Error fetching invitations:', error);
+        console.error('Fetching invitations error:', error);
         res.status(500).send({ error: 'Failed to fetch invitations' });
     }
 });
+
 
 
 
@@ -242,3 +242,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`)
 });
+
