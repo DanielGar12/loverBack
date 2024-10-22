@@ -212,6 +212,30 @@ app.get('/couple/:username', async (req, res) => {
     }
 });
 
+app.get('/invitations/:username', async (req, res) => {
+    const { username } = req.params;
+
+    try {
+        // Find the user by username
+        const receiver = await User.findOne({ username });
+
+        if (!receiver) {
+            return res.status(404).send({ error: 'User not found' });
+        }
+
+        // Fetch invitations where the user is the receiver
+        const invitations = await Invite.find({ receiver: receiver._id })
+            .populate('sender', 'username firstName lastName') // Populate sender details
+            .exec();
+
+        res.status(200).send({ invitations });
+    } catch (error) {
+        console.error('Error fetching invitations:', error);
+        res.status(500).send({ error: 'Failed to fetch invitations' });
+    }
+});
+
+
 
 
 const PORT = process.env.PORT || 3000;
