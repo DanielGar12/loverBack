@@ -25,6 +25,9 @@ const userSchema = new mongoose.Schema({
 const pairSchema = new mongoose.Schema({
     user1: {type: mongoose.Schema.Types.ObjectId, ref:'User', required: true},
     user2: {type: mongoose.Schema.Types.ObjectId, ref:'User', required: true},
+    // sharedData: {
+    //     calendar: 
+    // },
     creation: { type: Date, default: Date.now },
 });
 
@@ -122,28 +125,41 @@ app.post('/invite/send', async (req, res) => {
     console.log('Request body:', req.body);
 
     try {
+        // Check if the sender exists
         const sender = await User.findOne({ username: senderUsername });
-        const receiver = await User.findOne({ username: receiverUsername });
+        if (!sender) {
+            return res.status(404).send({ error: 'Sender user not found' });
+        }
 
-        if (!sender || !receiver) {
-            return res.status(404).send({ error: 'One or both users not found' });
+        // Check if the receiver exists
+        const receiver = await User.findOne({ username: receiverUsername });
+        if (!receiver) {
+            return res.status(404).send({ error: 'Receiver user not found' });
         }
 
         // Check if an invite already exists
-        const existingInvite = await Invite.findOne({ sender: sender._id, receiver: receiver._id });
+        const existingInvite = await Invite.findOne({
+            sender: sender._id,
+            receiver: receiver._id,
+        });
 
         if (existingInvite) {
             return res.status(400).send({ error: 'Invite already sent' });
         }
 
         // Create a new invite
-        const invite = new Invite({ sender: sender._id, receiver: receiver._id });
+        const invite = new Invite({
+            sender: sender._id,
+            receiver: receiver._id,
+            status: 'pending',
+        });
+
         await invite.save();
 
-        res.status(201).send({ message: 'Invite sent', invite });
+        res.status(201).send({ message: 'Invite sent successfully', invite });
     } catch (error) {
         console.error('Error sending invite:', error);
-        res.status(500).send({ error: 'Failed to send invite' });
+        res.status(500).send({ error: 'Server error. Failed to send invite.' });
     }
 });
 app.post('/invite/respond', async (req, res) => {
@@ -240,6 +256,6 @@ app.get('/invitations/:username', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`)
+    console.log(`Server running on http://localhost:${PORT}`)
 });
 
